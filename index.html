@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f5f1" />
+  <title>Stratum — Architectural design studio</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%232f4038'/%3E%3Cpath d='m8 15 12-7 12 7-12 7zM8 22l12 7 12-7M8 29l12 7 12-7' fill='none' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/controls/OrbitControls.js":"./vendor/OrbitControls.js"}}</script>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Stratum home"><span class="brand-mark" data-icon="layers"></span>STRATUM<span class="studio-label">STUDIO</span></a>
+    <div class="project-heading"><span class="breadcrumb">Workspace</span><span class="slash">/</span><button id="project-name" class="plain">The Courtyard House <span data-icon="chevron-down"></span></button><span class="project-tag">RESIDENTIAL</span></div>
+    <div class="header-actions"><span id="save-status"><i></i> All changes saved</span><button class="icon-button" id="help" title="Help & shortcuts" data-icon="help"></button><span class="avatar">JD</span></div>
+  </header>
+  <div class="workspace-bar">
+    <div class="workspace-title"><span class="project-symbol" data-icon="box"></span><div><strong>Design workspace</strong><span>Your ideas, in every dimension.</span></div></div>
+    <nav class="view-tabs" aria-label="Workspace views"><button class="active" data-view="3d"><span data-icon="box"></span>3D Model</button><button data-view="plan"><span data-icon="plan"></span>Floor Plan</button><button data-view="blueprint"><span data-icon="blueprint"></span>Blueprints <span class="count">1</span></button></nav>
+    <div class="workspace-actions"><button id="open-project" class="button"><span data-icon="folder"></span>Open</button><button id="save-project" class="button"><span data-icon="save"></span>Save</button><button id="export" class="button primary"><span data-icon="export"></span>Export <span data-icon="chevron-down"></span></button></div>
+  </div>
+  <main class="main-layout">
+    <aside class="sidebar left-panel">
+      <div class="panel-heading"><h2>Project explorer</h2><button class="icon-button small" id="project-settings" title="Project settings" data-icon="settings"></button></div>
+      <button class="search-trigger" id="search"><span data-icon="search"></span>Find a tool or element <kbd>⌘ K</kbd></button>
+      <div class="section-caption">PROJECT STRUCTURE <span data-icon="chevron-down"></span></div>
+      <div class="tree-root"><span data-icon="chevron-down"></span><span data-icon="building"></span><strong id="tree-project-name">The Courtyard House</strong></div>
+      <button class="floor-item active" id="floor-select"><span data-icon="plan"></span>Ground floor <span class="floor-code">00</span></button>
+      <div class="layer-list" id="layers"></div>
+      <div class="section-divider"></div>
+      <div class="section-caption">SAVED VIEWS <button class="icon-button small" id="save-view" title="Save current camera view" data-icon="plus"></button></div>
+      <div id="saved-views"><button class="saved-view active" data-camera="perspective"><span data-icon="box"></span>Perspective <span class="view-dot"></span></button><button class="saved-view" data-camera="top"><span data-icon="plan"></span>Top view</button><button class="saved-view" data-camera="front"><span data-icon="front"></span>Front elevation</button></div>
+      <div class="sidebar-bottom"><div class="library-art"><span data-icon="sofa"></span><span data-icon="plant"></span><span data-icon="lamp"></span></div><strong>Make space for the details.</strong><p>Bring your design to life with objects<br>from your component library.</p><button class="button" id="open-library"><span data-icon="grid"></span>Explore library <span data-icon="arrow-right"></span></button></div>
+      <div class="open-source"><span data-icon="code"></span> Open source. Built to build.<span class="version">v0.1</span></div>
+    </aside>
+    <section class="viewport" id="viewport" aria-label="Interactive architectural workspace">
+      <div id="canvas-host"></div><div id="plan-host" hidden></div>
+      <div class="viewport-top"><div class="view-label"><span id="view-title">Perspective view</span><span class="tiny-dot"></span><span id="view-subtitle">Ground floor</span><button class="icon-button small" id="fit-view" title="Fit model to view" data-icon="expand"></button></div><button id="display-mode" class="display-mode"><span class="material-dot"></span><span id="display-label">Shaded</span><span data-icon="chevron-down"></span></button></div>
+      <div class="tool-rail" role="toolbar" aria-label="Design tools"><button class="active" data-tool="select" title="Select (V)" data-icon="cursor"></button><button data-tool="pan" title="Pan (H)" data-icon="hand"></button><span></span><button data-tool="wall" title="Draw wall (W)" data-icon="wall"></button><button data-tool="door" title="Place door (D)" data-icon="door"></button><button data-tool="window" title="Place window" data-icon="window"></button><button data-tool="furniture" title="Component library (F)" data-icon="box"></button><span></span><button data-tool="measure" title="Measure (M)" data-icon="ruler"></button></div>
+      <button class="view-cube" id="view-cube" title="Reset perspective"><span class="cube-top">TOP</span><span class="cube-front">FRONT</span><span class="cube-side">R</span></button><div class="compass"><b>N</b><span>↑</span></div>
+      <div class="project-card"><span class="eyebrow">A SPACE TO CALL HOME</span><h1>The Courtyard<br>House<span>.</span></h1><p>Ground floor <span>·</span> Concept design</p><div class="project-stats"><div><strong id="area-stat">144.0 <small>m²</small></strong><span>Floor area</span></div><div><strong id="element-stat">0</strong><span>Elements</span></div><div><strong>1</strong><span>Level</span></div></div></div>
+      <div class="viewport-bottom"><div class="navigation-hint"><span data-icon="mouse"></span><span id="tool-hint">Drag to orbit <b>·</b> Right-drag to pan <b>·</b> Scroll to zoom</span></div><div class="zoom-controls"><button id="zoom-out" title="Zoom out" data-icon="minus"></button><span id="zoom-value">100%</span><button id="zoom-in" title="Zoom in" data-icon="plus"></button><i></i><button id="fit-bottom" title="Fit to view" data-icon="expand"></button></div></div>
+      <div id="selection-chip" hidden></div>
+      <div id="loading">Preparing your workspace…</div>
+    </section>
+    <aside class="sidebar right-panel">
+      <div class="right-tabs"><button class="active" data-panel="properties">Properties</button><button data-panel="project">Project info</button></div>
+      <div id="properties-content"></div>
+      <div class="right-bottom"><span class="green-spark" data-icon="spark"></span><div><strong>Designed with intention.</strong><p>Every great space starts with a plan.</p></div></div>
+    </aside>
+  </main>
+  <footer class="statusbar"><div><span class="status-light"></span><span id="status-text">Ready</span><span class="status-separator"></span><span id="selection-status">No selection</span></div><div><button class="enabled" id="snap-toggle"><span data-icon="magnet"></span>Snap <b>ON</b></button><button class="enabled" id="grid-toggle"><span data-icon="grid"></span>Grid <b>ON</b></button><span class="status-separator"></span><span id="coordinates">X 0.00 <i>Y 0.00</i> Z 0.00</span><span class="status-separator"></span><span>Units: <strong>meters</strong></span><button id="undo" title="Undo (Ctrl+Z)" data-icon="undo"></button><button id="redo" title="Redo (Ctrl+Shift+Z)" data-icon="redo"></button></div></footer>
+</div>
+<dialog id="modal"><div id="modal-content"></div></dialog><div id="toast" role="status"></div><input type="file" id="file-input" accept=".json,.stratum" hidden />
+<script type="module" src="app.js"></script>
+</body>
+</html>

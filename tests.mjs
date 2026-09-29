@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {createProject,validateProject,clone,History,snap,nearestWall,quantities,openingPosition} from './model.js';
+import {toDXF,toCSV} from './exports.js';
+import {planSVG,exportSVG} from './plan.js';
+const tests=[];
+const test=(name,run)=>tests.push({name,run});
+test('starter project validates and survives JSON serialization',()=>{const p=createProject();assert.deepEqual(validateProject(JSON.parse(JSON.stringify(p))),p);assert.equal(p.elements.length,32);});
+test('quantities subtract openings from wall volume',()=>{const p=createProject();const q=quantities(p);assert.equal(q.area,144);assert.ok(Math.abs(q.wallLength-69.8)<1e-10);assert.ok(Math.abs(q.wallVolume-36.136)<1e-10);assert.equal(q.windows,3);});
+test('invalid numeric geometry and zero length walls are rejected',()=>{for(const value of [NaN,Infinity,-1,0]){const p=createProject();p.elements[0].height=value;assert.throws(()=>validateProject(p));}const p=createProject();p.elements[0].x2=p.elements[0].x1;assert.throws(()=>validateProject(p));});
+test('openings must stay within their host wall',()=>{const p=createProject();p.elements.find(e=>e.type==='window').offset=0;assert.throws(()=>validateProject(p),/outside/);});
+test('overlapping openings are rejected',()=>{const p=createProject();const e=clone(p.elements.find(e=>e.type==='window'));e.id='copy';p.elements.push(e);assert.throws(()=>validateProject(p),/overlap/);});
+test('orphan openings and duplicate IDs are rejected',()=>{const p=createProject();p.elements.find(e=>e.type==='window').wallId='missing';assert.throws(()=>validateProject(p),/parent wall/);const p2=createProject();p2.elements[1].id=p2.elements[0].id;assert.throws(()=>validateProject(p2),/duplicate/);});
+test('negative furniture dimensions are rejected',()=>{const p=createProject();p.elements.find(e=>e.type==='furniture').depth=-1;assert.throws(()=>validateProject(p));});
+test('undo and redo restore independent model snapshots',()=>{const original=createProject(),h=new History(original);const edited=clone(original);edited.name='Second';h.push(edited);edited.name='Outside mutation';assert.equal(h.current.name,'Second');assert.equal(h.undo().name,original.name);assert.equal(h.redo().name,'Second');h.undo();h.push({...original,name:'Branch'});assert.equal(h.redo(),null);});
+test('history retains at most 80 previous models',()=>{const p=createProject(),h=new History(p);for(let i=0;i<100;i++)h.push({...p,name:'Revision '+i});assert.equal(h.past.length,80);});
+test('snap and wall projection use meter coordinates',()=>{assert.equal(snap(1.13),1.25);assert.equal(snap(-1.13),-1.25);assert.equal(snap(1.134,false),1.13);const p=createProject();const near=nearestWall(p,0,-5.9);assert.equal(near.wall.id,'w1');assert.equal(near.offset,6);const e=p.elements.find(e=>e.type==='window');const pos=openingPosition(p,e);assert.ok(Math.abs(pos.x+3.3)<1e-10);assert.equal(pos.z,-6);});
+test('DXF has meters, closed sections, and layer entities',()=>{const dxf=toDXF(createProject());const lines=dxf.trim().split('\r\n');assert.equal(lines.length%2,0);assert.ok(dxf.includes('$INSUNITS\r\n70\r\n6'));assert.ok(dxf.includes('WALLS'));assert.ok(dxf.includes('FURNITURE'));assert.ok(dxf.endsWith('0\r\nEOF\r\n'));assert.equal((dxf.match(/\r\nSECTION\r\n/g)||[]).length,(dxf.match(/\r\nENDSEC\r\n/g)||[]).length);});
+test('CSV handles quotes and formula-like project input',()=>{const p=createProject();p.elements[0].name='=HYPERLINK("bad")';const csv=toCSV(p);assert.ok(csv.includes('"\'=HYPERLINK(""bad"")"'));assert.equal(csv.split('\r\n').length,p.elements.length+1);});
+test('drawings escape user-authored content and include dimensions',()=>{const p=createProject();p.name='<script>alert(1)</script>';const svg=exportSVG(p);assert.ok(svg.includes('&lt;SCRIPT&gt;'));assert.ok(!svg.includes('<script>'));assert.ok(svg.includes('12.00 m'));assert.ok(svg.includes('<style>'));});
+test('hidden layers omit their geometry from the plan',()=>{const p=createProject();const svg=planSVG(p,{layers:{walls:false,doors:false,windows:false,furniture:false,slab:false}});assert.ok(!svg.includes('data-id='));});
+export async function runTests(){let passed=0;for(const {name,run}of tests){try{await run();console.log('PASS '+name);passed++;}catch(error){console.error('FAIL '+name);throw error;}}console.log(`${passed}/${tests.length} tests passed`);return {passed,total:tests.length};}
+export const result=await runTests();

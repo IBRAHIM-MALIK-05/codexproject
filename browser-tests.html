@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Stratum browser regression checks</title><style>body{font:15px system-ui;background:#f5f7f1;color:#334b35;padding:24px}iframe{width:1440px;height:1000px;position:absolute;left:-2000px}pre{white-space:pre-wrap;line-height:1.8}</style></head><body><h1>Stratum browser regression checks</h1><pre id="results">Running…</pre><iframe id="app-frame" src="/"></iframe><script type="module">
+const output=document.querySelector('#results'),frame=document.querySelector('iframe');let passed=0;const logs=[];
+const check=(name,condition)=>{if(!condition)throw new Error(name);passed++;logs.push('PASS '+name);output.textContent=logs.join('\n');};
+await new Promise(resolve=>frame.addEventListener('load',resolve,{once:true}));
+await new Promise(resolve=>setTimeout(resolve,1200));
+const win=frame.contentWindow,doc=frame.contentDocument,$=s=>doc.querySelector(s),saved=win.localStorage.getItem('stratum-project');
+const click=s=>{const e=$(s);if(!e)throw new Error('Missing UI: '+s);e.click();};
+const count=()=>Number($('#element-stat').textContent);
+const point=(x,z,target=null)=>{const svg=$('#plan-host svg'),p=svg.createSVGPoint();p.x=x*10;p.y=z*10;const pos=p.matrixTransform(svg.getScreenCTM());const el=target||svg;for(const type of ['pointerdown','pointerup'])el.dispatchEvent(new win.PointerEvent(type,{bubbles:true,clientX:pos.x,clientY:pos.y,button:0}));};
+try{
+ check('Initial application has 32 elements',count()===32);
+ check('3D renderer initialized',!!$('#canvas-host canvas')&&!$('#loading'));
+ click('[data-view="plan"]');check('Floor plan renders walls',!$('#plan-host').hidden&&doc.querySelectorAll('.plan-wall').length===10);
+ click('[data-tool="wall"]');point(-3,0);point(-1,0);check('Two-click wall drawing creates geometry',count()===33);
+ const height=$('[data-prop="height"]');height.value='3.2';height.dispatchEvent(new win.Event('change',{bubbles:true}));check('Numeric property edits persist',JSON.parse(win.localStorage.getItem('stratum-project')).elements.at(-1).height===3.2);
+ click('#undo');click('#undo');check('Undo restores original element count',count()===32);
+ click('#redo');click('#redo');check('Redo restores geometry and dimensions',count()===33&&JSON.parse(win.localStorage.getItem('stratum-project')).elements.at(-1).height===3.2);
+ click('[data-tool="select"]');const added=JSON.parse(win.localStorage.getItem('stratum-project')).elements.at(-1);point(-2,0,$(`[data-id="${added.id}"]`));check('Plan selection exposes properties',!!$('#delete'));
+ click('#delete');check('Delete updates model',count()===32);click('#undo');check('Undo restores deleted wall',count()===33);
+ click('#open-library');click('[data-component="chair"]');check('Library creates editable component',count()===34&&!!$('[data-prop="rotation"]'));
+ click('[data-tool="door"]');point(0,-6);check('Door placement creates a valid hosted opening',count()===35&&JSON.parse(win.localStorage.getItem('stratum-project')).elements.at(-1).type==='door');
+ click('[data-tool="window"]');point(-3.3,-6);check('Overlapping window placement is rejected',count()===35&&$('#toast').textContent.includes('overlap'));
+ click('[data-tool="measure"]');point(0,0);point(3,4);check('Measurement returns a 5 meter diagonal',$('#toast').textContent.includes('5.000 m'));
+ click('[data-layer="walls"]');check('Layer visibility removes plan geometry',doc.querySelectorAll('.plan-wall').length===0);click('[data-layer="walls"]');
+ click('#snap-toggle');check('Snap control updates state',$('#snap-toggle b').textContent==='OFF');
+ click('[data-view="blueprint"]');check('Blueprint includes drawing title block',$('#plan-host').classList.contains('blueprint')&&$('#plan-host').textContent.includes('A-101'));check('3D controls are hidden in blueprint view',win.getComputedStyle($('.view-cube')).display==='none');
+ click('#export');check('Export dialog exposes five formats',doc.querySelectorAll('[data-export]').length===5);click('.close-modal');
+ click('#search');$('#command-query').value='Primary bed';$('#command-query').dispatchEvent(new win.Event('input',{bubbles:true}));check('Command palette finds project elements',$('#command-results').textContent.includes('Primary bed'));click('.close-modal');
+ output.textContent=logs.join('\n')+`\n\n${passed}/${passed} browser checks passed.`;document.title=`PASS ${passed} browser checks`;
+}catch(error){logs.push('FAIL '+error.message);output.textContent=logs.join('\n');document.title='FAIL browser checks';}
+finally{if(saved===null)win.localStorage.removeItem('stratum-project');else win.localStorage.setItem('stratum-project',saved);}
+</script></body></html>
